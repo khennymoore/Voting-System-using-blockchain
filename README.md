@@ -1,154 +1,161 @@
-# Voting-System-using-blockchain
+# Voting System Smart Contract
 
+This smart contract implements a decentralized voting system with the following features:
 
-## **Overview**
+- **Proposal Management**: Add proposals for voting with a title and description.
+- **Voting**: Cast votes securely using hashed votes to maintain voter anonymity.
+- **Vote Verification**: Verify if a vote matches a submitted secret.
+- **Voting Control**: Open and close voting sessions.
 
-This project is a secure and transparent **Blockchain-Based Voting System** implemented using **Clarity**, the smart contract language for the Stacks blockchain. The system ensures anonymity and immutability for voters while providing transparent and verifiable election results.
+## Features
 
----
+1. **Proposal Management**  
+   - Admin (contract owner) can add proposals with a title and description.
+   - Each proposal is assigned a unique ID.
 
-## **Features**
+2. **Voting**  
+   - Voters can cast a vote for a specific proposal using a hashed value of their vote.
+   - Ensures that each voter can vote only once.
 
-- **Immutable Vote Records**: All votes are stored immutably on the blockchain.
-- **End-to-End Encryption**: Voter identities are anonymized, ensuring privacy.
-- **Role-Based Access**: Only the admin (contract owner) can manage elections.
-- **Transparency**: Election results are accessible to the public, preserving anonymity.
+3. **Vote Verification**  
+   - Voters can verify their vote by providing the secret used to generate their hashed vote.
 
----
-
-## **Smart Contract Functions**
-
-### **Admin Functions**
-1. **`register-election`**  
-   Registers a new election.  
-   **Parameters**:
-   - `id (uint)`: Unique ID of the election.
-   - `name (string-ascii 50)`: Name of the election.
-   - `candidates (list 10 (string-ascii 30))`: List of candidates.  
-   **Access**: Admin only.  
-   **Returns**: `true` if the election is registered successfully.
-
-2. **`close-election`**  
-   Closes an election, preventing further voting.  
-   **Parameters**:
-   - `id (uint)`: ID of the election to close.  
-   **Access**: Admin only.  
-   **Returns**: `true` if the election is closed successfully.
+4. **Voting Control**  
+   - Admin can open or close the voting session.
+   - Votes can only be cast while voting is open.
 
 ---
 
-### **Voter Functions**
-3. **`vote`**  
-   Casts a vote in an election.  
-   **Parameters**:
-   - `election-id (uint)`: ID of the election.
-   - `candidate-id (uint)`: ID of the candidate.  
-   **Access**: All voters.  
-   **Returns**: `true` if the vote is cast successfully.  
-   **Restrictions**:
-   - Voter must not have voted before in the same election.
-   - Election must be open.
-   - Candidate must exist in the election.
+## Data Structures
+
+### Constants
+- **`contract-owner`**: The principal address of the contract owner.
+- **Error Codes**:
+  - `err-unauthorized (u100)`: Unauthorized action.
+  - `err-already-voted (u101)`: Voter has already cast a vote.
+  - `err-invalid-proposal (u102)`: Proposal ID does not exist.
+  - `err-voting-closed (u103)`: Voting is closed.
+
+### Data Variables
+- **`voting-open`**: Boolean flag indicating whether voting is open.
+- **`proposal-count`**: Total number of proposals.
+- **`proposals`**: Map of proposal IDs to proposal details (title, description, and vote count).
+- **`voters`**: Map of voter addresses to their voting details (`has-voted` and `vote-hash`).
 
 ---
 
-### **Read-Only Functions**
-4. **`get-election`**  
-   Retrieves details of an election.  
-   **Parameters**:
-   - `id (uint)`: ID of the election.  
-   **Returns**: Election details including its name, status (open/closed), and candidates.
+## Functions
 
-5. **`get-results`**  
-   Fetches the voting results of an election.  
-   **Parameters**:
-   - `election-id (uint)`: ID of the election.  
-   **Returns**: A map of candidate IDs to their respective vote counts.
+### Read-Only Functions
+- **`get-proposal(proposal-id)`**  
+  Retrieves the details of a specific proposal.
+  
+- **`has-voted(voter)`**  
+  Checks if a voter has already voted.
+  
+- **`get-vote-hash(voter)`**  
+  Retrieves the hash of the voter's cast vote.
 
-6. **`has-voted?`**  
-   Checks if a voter has already voted in an election.  
-   **Parameters**:
-   - `election-id (uint)`: ID of the election.
-   - `voter (principal)`: Voter's address.  
-   **Returns**: `true` if the voter has already voted, otherwise `false`.
+- **`verify-vote(voter, proposal-id, secret)`**  
+  Verifies if the voter's vote matches the provided secret.
 
----
-
-## **Error Codes**
-
-| Code | Description                       |
-|------|-----------------------------------|
-| `1`  | Unauthorized action (not admin). |
-| `2`  | Voter has already voted.          |
-| `3`  | Voter not registered.             |
-| `4`  | Election not found.               |
-| `5`  | Election is closed.               |
-| `6`  | Invalid candidate ID.             |
+### Public Functions
+- **`add-proposal(title, description)`**  
+  Adds a new proposal. Only the contract owner can call this function.
+  
+- **`cast-vote(proposal-id, vote-hash)`**  
+  Allows a voter to cast a vote for a proposal using a hashed vote.  
+  Ensures:
+  - The proposal exists.
+  - Voting is open.
+  - The voter has not already voted.
+  
+- **`close-voting()`**  
+  Closes the voting session. Only the contract owner can call this function.
 
 ---
 
-## **Deployment**
+## Usage Instructions
 
-### **Prerequisites**
-- **Clarity Developer Tools**: Install via [Stacks CLI](https://docs.stacks.co/).
-- **Stacks Blockchain Testnet**: Use the testnet for development and testing.
+### 1. Deploying the Contract
+The contract owner (deployer) automatically becomes the `contract-owner`.
 
-### **Steps**
-1. Write the contract code in a file named `voting-system.clar`.
-2. Deploy the contract:
-   ```bash
-   stacks-cli contract deploy voting-system.clar <deployer-principal>
-   ```
-3. Interact with the contract using `stacks.js` or the Clarity CLI.
+### 2. Adding Proposals
+Call the `add-proposal` function with the desired `title` and `description`.  
+Example:  
+```clojure
+(add-proposal "Proposal 1" "Description of proposal 1")
+```
 
----
+### 3. Casting Votes
+Voters must generate a `hash` of their vote using the `hash160` function and cast it with the `cast-vote` function.  
+Example:  
+```clojure
+(cast-vote 0 0x123456789abcdef)
+```
 
-## **Usage**
+### 4. Verifying Votes
+Voters can verify their vote by providing the secret used to generate the vote hash.  
+Example:  
+```clojure
+(verify-vote tx-sender 0 0xabcdef123456789)
+```
 
-### **Frontend Integration**
-Use a frontend framework like React or Angular to:
-- Register elections (admin).
-- Allow users to cast votes.
-- Display real-time election results.
-
-### **Example Transactions**
-1. **Register an Election**:
-   ```clarity
-   (contract-call? .voting-system register-election 1 "Presidential Election" ["Alice" "Bob"])
-   ```
-
-2. **Vote for a Candidate**:
-   ```clarity
-   (contract-call? .voting-system vote 1 0) ;; Vote for "Alice" in election ID 1
-   ```
-
-3. **Fetch Results**:
-   ```clarity
-   (contract-call? .voting-system get-results 1)
-   ```
+### 5. Closing Voting
+The contract owner can close the voting session by calling `close-voting`.  
+Example:  
+```clojure
+(close-voting)
+```
 
 ---
 
-## **Testing**
-
-1. Write unit tests for the smart contract using Clarity's testing framework.
-2. Test scenarios:
-   - Admin registration and closing of elections.
-   - Voting restrictions (already voted, invalid candidate).
-   - Result computation and retrieval.
+## Error Handling
+- **Unauthorized Actions**: Returns `err u100` if the caller is not the contract owner for restricted actions.
+- **Duplicate Votes**: Returns `err u101` if a voter attempts to vote more than once.
+- **Invalid Proposal**: Returns `err u102` if the provided proposal ID does not exist.
+- **Voting Closed**: Returns `err u103` if voting is closed and a voter attempts to vote.
 
 ---
 
-## **Future Enhancements**
-- Implement voter registration with KYC (Know Your Customer).
-- Add weighted voting (e.g., votes carry different weights based on roles).
-- Enhance the frontend for a user-friendly voting experience.
+## Security Features
+- **Admin Control**: Only the contract owner can add proposals and close voting.
+- **Anonymity**: Votes are stored as hashes, ensuring voter anonymity.
+- **Vote Verification**: Voters can verify the integrity of their vote using a secret.
 
 ---
 
-## **License**
-This project is licensed under the MIT License.
+## Example Scenarios
 
---- 
+### Admin Adds Proposals
+```clojure
+(add-proposal "Proposal A" "Increase funding for project A")
+(add-proposal "Proposal B" "Reduce costs for project B")
+```
 
-Feel free to tweak the README further based on your project's specifics! Let me know if you'd like help with any section.
+### Voter Casts a Vote
+```clojure
+(cast-vote 0 0xhash_of_vote_secret)
+```
+
+### Verify the Vote
+```clojure
+(verify-vote tx-sender 0 0xvote_secret)
+```
+
+### Admin Closes Voting
+```clojure
+(close-voting)
+```
+
+---
+
+## Future Enhancements
+- Support for re-opening voting sessions.
+- Integration with decentralized identity systems for voter authentication.
+- Expanding proposal details with additional metadata.
+
+---
+
+## License
+This project is open-source and available for public use. Contributions are welcome.
